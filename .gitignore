@@ -1,0 +1,43 @@
+# Flutter / Dart ignores
+
+# Build outputs
+build/
+**/build/
+
+# Dart tooling
+.dart_tool/
+.packages
+.pub/
+.pub-cache/
+
+# Generated files
+generated_plugin_registrant.dart
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# iOS
+Pods/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Runner/GeneratedPluginRegistrant.*
+
+# Android
+.android/
+.gradle/
+local.properties
+
+# Misc
+.DS_Store
+*.log   
+.env
+*.keystore
+
+# Optional: lockfiles
+pubspec.lock
+
+# End of file
