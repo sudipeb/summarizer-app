@@ -1,4 +1,6 @@
 import 'package:bloc/bloc.dart';
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -23,7 +25,7 @@ class SummarizerCubit extends Cubit<SummarizerState> {
   final String _length;
   final String _format;
 
-  Future<String?> summarizeText(String input) async {
+  Future<String?> summarizeText(String input, {String? length, String? format}) async {
     if (input.trim().isEmpty) {
       emit(const SummarizerState(errorMessage: 'Input cannot be empty'));
       return null;
@@ -34,7 +36,7 @@ class SummarizerCubit extends Cubit<SummarizerState> {
 
       final response = await _dio.post<Object>(
         _endpoint,
-        data: <String, dynamic>{'text': input, 'length': _length, 'format': _format},
+        data: <String, dynamic>{'text': input, 'length': length ?? _length, 'format': format ?? _format},
         options: Options(contentType: Headers.jsonContentType),
       );
 
@@ -85,6 +87,14 @@ class SummarizerCubit extends Cubit<SummarizerState> {
   }
 
   String _dioErrorMessage(DioException e) {
+    final statusCode = e.response?.statusCode;
+    final normalizedMessage = e.message?.toLowerCase() ?? '';
+
+    // Provider quota/rate-limit failures are often wrapped in 500s by backend services.
+    if (_looksLikeQuotaError(statusCode, normalizedMessage, e.response?.data)) {
+      return 'Quota reached. Please try again in a bit.';
+    }
+
     final data = e.response?.data;
     if (data is Map<String, dynamic>) {
       final detail = data['detail'] ?? data['message'] ?? data['error'];
@@ -93,6 +103,50 @@ class SummarizerCubit extends Cubit<SummarizerState> {
       }
     }
 
+    if (statusCode != null && statusCode >= 500) {
+      return 'Server error. Please try again later.';
+    }
+
+    if (statusCode == 429) {
+      return 'Too many requests. Please wait and try again.';
+    }
+
+    if (statusCode == 404) {
+      return 'Endpoint not found. Please check the backend URL.';
+    }
+
+    if (statusCode == 401 || statusCode == 403) {
+      return 'Request was rejected by the server.';
+    }
+
     return e.message ?? 'Network request failed';
+  }
+
+  bool _looksLikeQuotaError(int? statusCode, String normalizedMessage, Object? responseData) {
+    if (statusCode == 429) return true;
+
+    if (normalizedMessage.contains('resource_exhausted') ||
+        normalizedMessage.contains('quota exceeded') ||
+        normalizedMessage.contains('rate limit')) {
+      return true;
+    }
+
+    if (responseData is Map<String, dynamic>) {
+      final flat = jsonEncode(responseData).toLowerCase();
+      return flat.contains('resource_exhausted') ||
+          flat.contains('quota exceeded') ||
+          flat.contains('rate limit') ||
+          flat.contains('429');
+    }
+
+    if (responseData is String) {
+      final flat = responseData.toLowerCase();
+      return flat.contains('resource_exhausted') ||
+          flat.contains('quota exceeded') ||
+          flat.contains('rate limit') ||
+          flat.contains('429');
+    }
+
+    return false;
   }
 }
