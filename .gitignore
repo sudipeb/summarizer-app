@@ -19,6 +19,7 @@ generated_plugin_registrant.dart
 
 # VS Code
 .vscode/
+./opencode
 
 # iOS
 Pods/

@@ -3,7 +3,12 @@ import 'dart:convert';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class HistoryRecord {
-  HistoryRecord({required this.title, required this.query, required this.answer, required this.createdAt});
+  HistoryRecord({
+    required this.title,
+    required this.query,
+    required this.answer,
+    required this.createdAt,
+  });
 
   final String title;
   final String query;
@@ -15,7 +20,9 @@ class HistoryRecord {
       title: (json['title'] as String?) ?? '',
       query: (json['query'] as String?) ?? '',
       answer: (json['answer'] as String?) ?? '',
-      createdAt: DateTime.tryParse((json['createdAt'] as String?) ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
+      createdAt:
+          DateTime.tryParse((json['createdAt'] as String?) ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
     );
   }
 
@@ -25,9 +32,7 @@ class HistoryRecord {
       if (decoded is Map<String, dynamic>) {
         return HistoryRecord.fromJson(decoded);
       }
-    } catch (_) {
-      // Backward compatibility for old title-only entries.
-    }
+    } catch (_) {}
 
     return HistoryRecord(
       title: storedValue,
@@ -48,46 +53,51 @@ class HistoryRecord {
 }
 
 class HistoryService {
-  static const _boxName = 'history';
+  static const String _boxName = 'history';
+  static Box<String>? _box;
 
-  /// Initialize Hive and open the history box.
   static Future<void> init() async {
     await Hive.initFlutter();
-    await Hive.openBox<String>(_boxName);
+    _box = await Hive.openBox<String>(_boxName);
   }
 
-  static Future<Box<String>> _ensureBox() async {
-    if (Hive.isBoxOpen(_boxName)) {
-      return Hive.box<String>(_boxName);
+  static Box<String> get _historyBox {
+    if (_box != null && _box!.isOpen) {
+      return _box!;
+    }
+    throw StateError('HistoryService not initialized. Call init() first.');
+  }
+
+  static Future<void> addEntry({
+    required String title,
+    required String query,
+    required String answer,
+  }) async {
+    if (title.trim().isEmpty && query.trim().isEmpty && answer.trim().isEmpty) {
+      return;
     }
 
-    return Hive.openBox<String>(_boxName);
-  }
-
-  /// Add a full query/answer entry to history.
-  static Future<void> addEntry({required String title, required String query, required String answer}) async {
-    if (title.trim().isEmpty && query.trim().isEmpty && answer.trim().isEmpty) return;
-    final box = await _ensureBox();
     final record = HistoryRecord(
       title: title.trim(),
       query: query.trim(),
       answer: answer.trim(),
       createdAt: DateTime.now(),
     );
-    await box.add(jsonEncode(record.toJson()));
+
+    await _historyBox.add(jsonEncode(record.toJson()));
   }
 
-  /// Get all history records in insertion order.
   static List<HistoryRecord> getAllEntries() {
-    if (!Hive.isBoxOpen(_boxName)) return <HistoryRecord>[];
-    final box = Hive.box<String>(_boxName);
-    return box.values.map(HistoryRecord.fromStoredValue).toList();
+    try {
+      return _historyBox.values.map(HistoryRecord.fromStoredValue).toList();
+    } catch (_) {
+      return <HistoryRecord>[];
+    }
   }
 
-  /// Clear all history entries.
   static Future<void> clear() async {
-    if (!Hive.isBoxOpen(_boxName)) return;
-    final box = Hive.box<String>(_boxName);
-    await box.clear();
+    try {
+      await _historyBox.clear();
+    } catch (_) {}
   }
 }

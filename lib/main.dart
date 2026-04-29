@@ -5,38 +5,40 @@ import 'package:summarizer/core/services/history_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await _initDependencies();
+  runApp(const SummarizerApp());
+}
+
+Future<void> _initDependencies() async {
   try {
     await dotenv.load();
   } catch (e) {
-    // If dotenv fails to load, continue and let the app run with defaults.
-    // This prevents an uncaught exception from stopping startup.
-    // Ignore intentionally, but print for debugging.
-    // ignore: avoid_print
-    print('Warning: failed to load .env: $e');
+    debugPrint('Warning: failed to load .env: $e');
   }
 
-  // Initialize Hive-based history storage
   try {
     await HistoryService.init();
   } catch (e) {
-    // ignore: avoid_print
-    print('Warning: failed to initialize HistoryService: $e');
+    debugPrint('Warning: failed to initialize HistoryService: $e');
   }
-
-  runApp(MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class SummarizerApp extends StatelessWidget {
+  const SummarizerApp({super.key});
 
   @override
-  Widget build(context) {
-    String? endpoint;
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: TextSummarizer(endpoint: _getApiEndpoint()),
+    );
+  }
+
+  String? _getApiEndpoint() {
     try {
-      endpoint = dotenv.env['SUMMARIZER_API_URL'];
+      return dotenv.env['SUMMARIZER_API_URL'];
     } catch (_) {
-      endpoint = null;
+      return null;
     }
-    return MaterialApp(debugShowCheckedModeBanner: false, home: TextSummarizer(endpoint: endpoint));
   }
 }
