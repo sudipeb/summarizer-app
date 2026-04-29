@@ -19,7 +19,8 @@ generated_plugin_registrant.dart
 
 # VS Code
 .vscode/
-./opencode
+	# OpenCode (local AI configuration)
+	.opencode/
 
 # iOS
 Pods/
