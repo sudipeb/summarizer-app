@@ -32,7 +32,7 @@ ios/Runner/GeneratedPluginRegistrant.*
 .android/
 .gradle/
 local.properties
-
+.opencode
 # Misc
 .DS_Store
 *.log   
